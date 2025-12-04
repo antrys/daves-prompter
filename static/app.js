@@ -100,10 +100,17 @@ class SpeechPrompter {
         this.elements.btnCancelScript.addEventListener('click', () => this.closeScriptModal());
         this.elements.btnConfirmScript.addEventListener('click', () => this.loadScript());
         
-        // Drop zone
+        // Drop zone - also allow dropping on the textarea
         this.elements.dropZone.addEventListener('dragover', (e) => this.handleDragOver(e));
         this.elements.dropZone.addEventListener('dragleave', () => this.handleDragLeave());
         this.elements.dropZone.addEventListener('drop', (e) => this.handleDrop(e));
+        
+        // Also allow dropping on the textarea itself
+        this.elements.scriptInput.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+        this.elements.scriptInput.addEventListener('drop', (e) => this.handleDrop(e));
         
         // Settings modal
         this.elements.settingsBackdrop.addEventListener('click', () => this.closeSettingsModal());
@@ -378,19 +385,101 @@ class SpeechPrompter {
     
     handleDrop(e) {
         e.preventDefault();
+        e.stopPropagation();
         this.elements.dropZone.classList.remove('dragover');
         
         const files = e.dataTransfer.files;
         if (files.length > 0) {
             const file = files[0];
-            if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+            const fileName = file.name.toLowerCase();
+            
+            if (fileName.endsWith('.odt')) {
+                this.parseODTFile(file);
+            } else if (file.type === 'text/plain' || fileName.endsWith('.txt')) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    this.elements.scriptInput.value = e.target.result;
+                reader.onload = (evt) => {
+                    this.elements.scriptInput.value = evt.target.result;
                 };
                 reader.readAsText(file);
+            } else {
+                alert('Please drop a .txt or .odt file');
             }
         }
+    }
+    
+    async parseODTFile(file) {
+        try {
+            if (typeof JSZip === 'undefined') {
+                throw new Error('JSZip library not loaded');
+            }
+            
+            // ODT files are ZIP archives containing content.xml
+            const zip = await JSZip.loadAsync(file);
+            const contentFile = zip.file('content.xml');
+            
+            if (!contentFile) {
+                throw new Error('content.xml not found in ODT file');
+            }
+            
+            const contentXml = await contentFile.async('string');
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(contentXml, 'application/xml');
+            
+            // Check for parse errors
+            const parseError = doc.querySelector('parsererror');
+            if (parseError) {
+                throw new Error('XML parse error');
+            }
+            
+            // Extract text from paragraphs, preserving structure
+            const paragraphs = doc.getElementsByTagNameNS('urn:oasis:names:tc:opendocument:xmlns:text:1.0', 'p');
+            let text = '';
+            
+            for (let i = 0; i < paragraphs.length; i++) {
+                const para = paragraphs[i];
+                let paraText = this.extractODTText(para);
+                
+                if (paraText.trim()) {
+                    text += paraText + '\n\n';
+                } else {
+                    text += '\n';
+                }
+            }
+            
+            this.elements.scriptInput.value = text.trim();
+            
+        } catch (error) {
+            console.error('Error parsing ODT file:', error);
+            alert('Error reading ODT file: ' + error.message);
+        }
+    }
+    
+    extractODTText(element) {
+        // Recursively extract text from ODT XML elements
+        let text = '';
+        
+        for (const node of element.childNodes) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                text += node.textContent;
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const localName = node.localName;
+                
+                if (localName === 'line-break' || localName === 'soft-page-break') {
+                    text += '\n';
+                } else if (localName === 'tab') {
+                    text += '\t';
+                } else if (localName === 's') {
+                    // Space element - may have count attribute
+                    const count = parseInt(node.getAttribute('text:c') || node.getAttribute('c') || '1', 10);
+                    text += ' '.repeat(count);
+                } else {
+                    // Recurse into child elements (spans, etc.)
+                    text += this.extractODTText(node);
+                }
+            }
+        }
+        
+        return text;
     }
     
     renderScript() {
@@ -403,7 +492,7 @@ class SpeechPrompter {
         this.elements.placeholderMessage.classList.add('hidden');
         this.elements.scriptDisplay.classList.remove('hidden');
         
-        // Parse script into words and render
+        // Parse script into words and render, preserving line breaks
         const wordPattern = /[\w']+|[^\w\s]+|\s+/g;
         let match;
         let wordIndex = 0;
@@ -413,11 +502,20 @@ class SpeechPrompter {
             const token = match[0];
             
             if (/[\w']+/.test(token)) {
-                // It's a word - start as upcoming (white), will turn grey when passed
+                // It's a word
                 html += `<span class="word upcoming" data-index="${wordIndex}">${this.escapeHtml(token)}</span>`;
                 wordIndex++;
+            } else if (/\s/.test(token)) {
+                // Whitespace - preserve line breaks
+                // Convert \n to <br>, preserve multiple line breaks
+                const withBreaks = token
+                    .replace(/\r\n/g, '\n')  // Normalize line endings
+                    .replace(/\n\n+/g, '<br><br>')  // Double+ newlines = paragraph break
+                    .replace(/\n/g, '<br>')  // Single newline = line break
+                    .replace(/ {2,}/g, (spaces) => '&nbsp;'.repeat(spaces.length));  // Preserve multiple spaces
+                html += withBreaks || ' ';
             } else {
-                // Whitespace or punctuation
+                // Punctuation
                 html += this.escapeHtml(token);
             }
         }

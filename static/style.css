@@ -321,6 +321,17 @@ body {
     color: var(--text-primary); /* Normal bright text */
 }
 
+/* Preserve script formatting */
+.script-display br {
+    display: block;
+    content: "";
+    margin-top: 0.5em; /* Space for line breaks */
+}
+
+.script-display br + br {
+    margin-top: 1em; /* Extra space for paragraph breaks */
+}
+
 /* Modal */
 .modal {
     display: none;

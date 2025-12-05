@@ -41,7 +41,7 @@
     --font-size-prompter: 48px;
     --line-height-prompter: 1.6;
     --reading-line-position: 30%;
-    --scroll-duration: 300ms;
+    --scroll-duration: 800ms;
     
     /* Animation */
     --transition-fast: 150ms ease;

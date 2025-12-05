@@ -83,7 +83,8 @@ class WordMatcher:
             
             # Within paragraph, split by sentence-ending punctuation
             # Keep the punctuation with the sentence
-            sentences = re.split(r'(?<=[.!?])\s+', para)
+            # Handle standard spacing AND missing spaces before capital letters (e.g. "end.Next")
+            sentences = re.split(r'(?<=[.!?])(?:\s+|$)|(?<=[.!?])(?=[A-Z])', para)
             
             for sentence in sentences:
                 sentence = sentence.strip()
@@ -244,15 +245,16 @@ class WordMatcher:
                 # CURRENT fragment: bonus to prevent premature jumps
                 proximity_bonus = 20
             elif fragment.index == self.current_fragment + 1:
-                # NEXT fragment: if it matches WELL (>75), give it priority to advance
+                # NEXT fragment: if it matches WELL (>55), give it priority to advance
                 # This lets us move forward when user starts reading the next sentence
-                if base_score >= 75:
-                    proximity_bonus = 25  # Beats current fragment bonus
+                if base_score >= 55:
+                    proximity_bonus = 30  # Beats current fragment bonus
                 else:
                     proximity_bonus = 5   # Low bonus unless it matches well
             elif fragment.index > self.current_fragment:
                 # Further ahead: penalty
-                proximity_bonus = -distance * 2
+                # Increase penalty to prevent jumping too far ahead prematurely
+                proximity_bonus = -distance * 5
             else:
                 # Going backward: heavy penalty
                 proximity_bonus = -distance * 10
@@ -318,8 +320,7 @@ class WordMatcher:
             # Only update if we're moving forward
             if best_idx > self.current_fragment:
                 self.current_fragment = best_idx
-                # Move to the START of the fragment, not the end
-                # This way we see the fragment we're currently reading
+                # Move to the START of the fragment initially
                 self.current_position = fragment.word_start
                 
                 # Mark the PREVIOUS fragment as matched (grey it out)
@@ -337,6 +338,33 @@ class WordMatcher:
                 print(f"        Position: {self.current_position}, Greyed: {matched_words}")
             elif verbose:
                 print(f"[Match] STAYING at fragment {best_idx} (already there)")
+
+            # --- INTRA-FRAGMENT TRACKING ---
+            # Now try to match specific words WITHIN the current fragment
+            # This allows us to highlight words as they are spoken, not just at the end
+            if best_idx == self.current_fragment:
+                # Get the words in the current fragment
+                frag_words = re.findall(r"[\w']+", fragment.text.lower())
+                
+                # Try to match the tail of spoken words to words in the fragment
+                # We only care about the last few spoken words
+                recent_spoken = [w.lower() for w in spoken_words[-5:]] # Look at last 5 words
+                
+                matched_idx = self._match_words_in_fragment(recent_spoken, frag_words)
+                
+                if matched_idx is not None:
+                    # Convert fragment-relative index to global word index
+                    new_pos = fragment.word_start + matched_idx
+                    
+                    # Only advance forward within the fragment
+                    if new_pos > self.current_position:
+                        self.current_position = new_pos
+                        
+                        # Mark words up to this point as matched
+                        for i in range(fragment.word_start, new_pos + 1):
+                            if i not in self.matched_positions:
+                                self.matched_positions.append(i)
+                                matched_words.append(i)
         elif verbose:
             print(f"[Match] NO MOVE: score {score:.0f} not confident enough")
         
@@ -346,6 +374,44 @@ class WordMatcher:
             confidence=score / 100,
             matched_words=matched_words
         )
+
+    def _match_words_in_fragment(self, spoken_words: List[str], frag_words: List[str]) -> Optional[int]:
+        """
+        Find the best matching word index in the fragment for the spoken words.
+        Returns the index relative to the fragment start.
+        """
+        if not spoken_words or not frag_words:
+            return None
+            
+        # We want to find where the spoken words match in the fragment
+        # CRITICAL: Search FORWARD from the current position to avoid jumping ahead
+        # to repeated words (e.g. "the ... the")
+        
+        # Calculate current relative position in this fragment
+        current_rel_pos = 0
+        if self.current_fragment < len(self.fragments) and self.fragments[self.current_fragment].word_start <= self.current_position:
+             current_rel_pos = max(0, self.current_position - self.fragments[self.current_fragment].word_start)
+        
+        # Only look at words AFTER our current position (plus a small lookbehind for overlap)
+        start_search = max(0, current_rel_pos - 1)
+        
+        # Iterate forward through fragment
+        for i in range(start_search, len(frag_words)):
+            # Check if the word at i matches the LAST spoken word
+            if frag_words[i] == spoken_words[-1]:
+                # Potential match, check previous words if available
+                match = True
+                # Check up to 3 previous words for context
+                check_len = min(len(spoken_words), 3)
+                for j in range(1, check_len):
+                    if i - j < 0 or frag_words[i-j] != spoken_words[-1-j]:
+                        match = False
+                        break
+                
+                if match:
+                    return i
+                    
+        return None
     
     def match_partial(self, partial_text: str) -> Optional[int]:
         """

@@ -144,6 +144,15 @@ body {
     justify-content: center;
 }
 
+.btn-danger {
+    color: #ff6b6b;
+}
+
+.btn-danger:hover {
+    background: #4a2020;
+    color: #ff4444;
+}
+
 .btn-primary {
     background: var(--accent-primary);
     color: var(--bg-primary);

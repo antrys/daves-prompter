@@ -53,6 +53,7 @@ class SpeechPrompter {
             btnMirror: document.getElementById('btnMirror'),
             btnSettings: document.getElementById('btnSettings'),
             btnFullscreen: document.getElementById('btnFullscreen'),
+            btnShutdown: document.getElementById('btnShutdown'),
             statusIndicator: document.getElementById('statusIndicator'),
             statusText: document.getElementById('statusText'),
             wordProgress: document.getElementById('wordProgress'),
@@ -93,6 +94,7 @@ class SpeechPrompter {
         this.elements.btnMirror.addEventListener('click', () => this.toggleMirror());
         this.elements.btnSettings.addEventListener('click', () => this.openSettingsModal());
         this.elements.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
+        this.elements.btnShutdown.addEventListener('click', () => this.shutdownServer());
         
         // Script modal
         this.elements.modalBackdrop.addEventListener('click', () => this.closeScriptModal());
@@ -594,8 +596,8 @@ class SpeechPrompter {
         // Calculate target scroll position
         const targetScroll = container.scrollTop + scrollDelta;
         
-        // Smoothly animate to target (1600ms = slow, gentle scroll)
-        this._smoothScrollTo(container, targetScroll, 1600);
+        // Smoothly animate to target (2500ms = very slow, gentle scroll)
+        this._smoothScrollTo(container, targetScroll, 2500);
     }
     
     _smoothScrollTo(element, target, duration) {
@@ -606,16 +608,23 @@ class SpeechPrompter {
         
         const start = element.scrollTop;
         const distance = target - start;
+        
+        // Limit scroll speed: ~150 pixels per second
+        // This ensures consistent speed regardless of distance
+        const minDuration = Math.abs(distance) * 7; // 7ms per pixel = ~143px/sec
+        const actualDuration = Math.max(duration, minDuration);
+        
         const startTime = performance.now();
         
         const animateScroll = (currentTime) => {
             const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
+            const progress = Math.min(elapsed / actualDuration, 1);
             
-            // Ease out cubic for smooth deceleration
-            const easeOut = 1 - Math.pow(1 - progress, 3);
+            // More linear easing - gentle and consistent speed
+            // Using sine ease-in-out for smooth start and end
+            const ease = 0.5 - 0.5 * Math.cos(progress * Math.PI);
             
-            element.scrollTop = start + distance * easeOut;
+            element.scrollTop = start + distance * ease;
             
             if (progress < 1) {
                 this._scrollAnimation = requestAnimationFrame(animateScroll);
@@ -675,6 +684,33 @@ class SpeechPrompter {
             document.exitFullscreen();
         } else {
             document.documentElement.requestFullscreen();
+        }
+    }
+    
+    async shutdownServer() {
+        if (!confirm('Are you sure you want to shutdown the server?')) {
+            return;
+        }
+        
+        try {
+            this.updateStatus('Shutting down...', false);
+            const response = await fetch('/api/shutdown', { method: 'POST' });
+            
+            if (response.ok) {
+                this.updateStatus('Server stopped', false);
+                // Show message that server is down
+                setTimeout(() => {
+                    document.body.innerHTML = `
+                        <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #1a1b26; color: #a0a0a0; font-family: sans-serif; flex-direction: column; gap: 1rem;">
+                            <h2 style="color: #f0f0f0;">Server Stopped</h2>
+                            <p>The prompter server has been shut down.</p>
+                            <p style="font-size: 0.9em;">Run <code style="background: #2a2b32; padding: 0.2em 0.5em; border-radius: 4px;">./start.sh</code> to restart.</p>
+                        </div>
+                    `;
+                }, 500);
+            }
+        } catch (error) {
+            console.error('Error shutting down:', error);
         }
     }
     

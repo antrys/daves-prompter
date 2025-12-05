@@ -281,6 +281,37 @@ async def reset_position():
     return {"success": True, "position": 0}
 
 
+@app.post("/api/shutdown")
+async def shutdown_server():
+    """Safely shutdown the server."""
+    global is_running, speech_engine
+    
+    # Stop recognition if running
+    if speech_engine and is_running:
+        speech_engine.stop()
+        is_running = False
+    
+    # Notify clients
+    await broadcast({"type": "shutdown", "message": "Server shutting down"})
+    
+    # Clean up speech engine
+    if speech_engine:
+        speech_engine.cleanup()
+        speech_engine = None
+    
+    # Schedule shutdown after response is sent
+    import threading
+    def delayed_exit():
+        import time
+        time.sleep(0.5)
+        import os
+        os._exit(0)
+    
+    threading.Thread(target=delayed_exit, daemon=True).start()
+    
+    return {"success": True, "message": "Server shutting down"}
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time updates."""

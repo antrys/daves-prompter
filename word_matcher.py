@@ -60,73 +60,93 @@ class WordMatcher:
         """
         Parse script into fragments.
         
-        Splits on: . , ; : ! ? - and newlines
-        Keeps quotes together when possible.
+        Strategy:
+        1. Split by paragraphs FIRST (double newlines are HARD boundaries)
+        2. Within each paragraph, split by sentences (. ! ?)
+        3. Combine only within same sentence if too short
         """
         self.fragments = []
         self.current_fragment = 0
         self.current_position = 0
         self.matched_positions = []
         
-        # Split on punctuation but keep meaningful chunks
-        # This regex splits on punctuation followed by space, or newlines
-        split_pattern = r'[.!?]+\s*|[,;:]\s+|[\n\r]+|\s*[-–—]\s+'
-        
-        raw_fragments = re.split(split_pattern, text)
-        
         word_position = 0
         fragment_idx = 0
         
-        pending_text = ""
-        pending_word_start = 0
+        # First, split into paragraphs (hard boundaries - never combine across these)
+        paragraphs = re.split(r'\n\s*\n', text)
         
-        for raw in raw_fragments:
-            fragment_text = raw.strip()
-            if not fragment_text:
+        for para in paragraphs:
+            para = para.strip()
+            if not para:
                 continue
             
-            words = re.findall(r"[\w']+", fragment_text)
-            if not words:
-                continue
+            # Within paragraph, split by sentence-ending punctuation
+            # Keep the punctuation with the sentence
+            sentences = re.split(r'(?<=[.!?])\s+', para)
             
-            # Accumulate short fragments until we have at least 4 words
-            if pending_text:
-                pending_text += " " + fragment_text
-            else:
-                pending_text = fragment_text
-                pending_word_start = word_position
-            
-            word_position += len(words)
-            
-            # Only create a fragment if we have enough words (at least 4)
-            pending_words = re.findall(r"[\w']+", pending_text)
-            if len(pending_words) >= 4:
-                self.fragments.append(Fragment(
-                    text=pending_text,
-                    normalized=self._normalize(pending_text),
-                    index=fragment_idx,
-                    word_start=pending_word_start,
-                    word_end=word_position - 1
-                ))
-                fragment_idx += 1
+            for sentence in sentences:
+                sentence = sentence.strip()
+                if not sentence:
+                    continue
+                
+                # Within sentence, split by clause markers (commas, semicolons, etc)
+                clauses = re.split(r'[,;:]\s+|\s*[-–—]\s+', sentence)
+                
                 pending_text = ""
+                pending_word_start = word_position
+                
+                for clause in clauses:
+                    clause = clause.strip()
+                    if not clause:
+                        continue
+                    
+                    words = re.findall(r"[\w']+", clause)
+                    if not words:
+                        continue
+                    
+                    # Accumulate short clauses within the same sentence
+                    if pending_text:
+                        pending_text += ", " + clause
+                    else:
+                        pending_text = clause
+                        pending_word_start = word_position
+                    
+                    word_position += len(words)
+                    
+                    # Create fragment if we have at least 3 words
+                    pending_words = re.findall(r"[\w']+", pending_text)
+                    if len(pending_words) >= 3:
+                        self.fragments.append(Fragment(
+                            text=pending_text,
+                            normalized=self._normalize(pending_text),
+                            index=fragment_idx,
+                            word_start=pending_word_start,
+                            word_end=word_position - 1
+                        ))
+                        fragment_idx += 1
+                        pending_text = ""
+                
+                # Flush any remaining text from this sentence (even if short)
+                if pending_text:
+                    self.fragments.append(Fragment(
+                        text=pending_text,
+                        normalized=self._normalize(pending_text),
+                        index=fragment_idx,
+                        word_start=pending_word_start,
+                        word_end=word_position - 1
+                    ))
+                    fragment_idx += 1
+                    pending_text = ""
         
-        # Don't forget any remaining text
-        if pending_text:
-            self.fragments.append(Fragment(
-                text=pending_text,
-                normalized=self._normalize(pending_text),
-                index=fragment_idx,
-                word_start=pending_word_start,
-                word_end=word_position - 1
-            ))
-        
-        # Debug output
+        # Debug output - show ALL fragments so we can see what's happening
         print(f"[Matcher] Parsed {len(self.fragments)} fragments from script")
-        for i, f in enumerate(self.fragments[:5]):  # Show first 5
-            print(f"  [{i}] '{f.text[:50]}...' (words {f.word_start}-{f.word_end})")
-        if len(self.fragments) > 5:
-            print(f"  ... and {len(self.fragments) - 5} more")
+        print(f"[Matcher] === ALL FRAGMENTS ===")
+        for i, f in enumerate(self.fragments):
+            # Truncate long text for readability
+            display_text = f.text[:60] + "..." if len(f.text) > 60 else f.text
+            print(f"  [{i}] words {f.word_start:3d}-{f.word_end:3d}: '{display_text}'")
+        print(f"[Matcher] === END FRAGMENTS ===")
     
     def _normalize(self, text: str) -> str:
         """Normalize text for matching."""
@@ -220,20 +240,22 @@ class WordMatcher:
             # Proximity bonus/penalty - STRONGLY favor moving forward
             distance = abs(fragment.index - self.current_fragment)
             
-            if fragment.index > self.current_fragment:
-                # Forward: small penalty for distance, but fragments ahead are OK
-                proximity_bonus = max(0, self.proximity_weight - distance)
-                # BIG bonus for being the next fragment (natural reading progression)
-                if fragment.index == self.current_fragment + 1:
-                    proximity_bonus += 20
-                elif fragment.index == self.current_fragment + 2:
-                    proximity_bonus += 10
-            elif fragment.index == self.current_fragment:
-                # Current fragment: no bonus (we want to move forward)
-                proximity_bonus = 0
+            if fragment.index == self.current_fragment:
+                # CURRENT fragment: bonus to prevent premature jumps
+                proximity_bonus = 20
+            elif fragment.index == self.current_fragment + 1:
+                # NEXT fragment: if it matches WELL (>75), give it priority to advance
+                # This lets us move forward when user starts reading the next sentence
+                if base_score >= 75:
+                    proximity_bonus = 25  # Beats current fragment bonus
+                else:
+                    proximity_bonus = 5   # Low bonus unless it matches well
+            elif fragment.index > self.current_fragment:
+                # Further ahead: penalty
+                proximity_bonus = -distance * 2
             else:
                 # Going backward: heavy penalty
-                proximity_bonus = -distance * 5
+                proximity_bonus = -distance * 10
             
             final_score = base_score + proximity_bonus
             
@@ -293,20 +315,26 @@ class WordMatcher:
             fragment = self.fragments[best_idx]
             old_frag = self.current_fragment
             
-            # Only update if we're moving forward OR it's a different fragment
-            # This prevents getting stuck on the same fragment
-            if best_idx > self.current_fragment or best_idx != old_frag:
+            # Only update if we're moving forward
+            if best_idx > self.current_fragment:
                 self.current_fragment = best_idx
-                self.current_position = fragment.word_end
+                # Move to the START of the fragment, not the end
+                # This way we see the fragment we're currently reading
+                self.current_position = fragment.word_start
                 
-                # Mark words as matched
-                for i in range(fragment.word_start, fragment.word_end + 1):
-                    if i not in self.matched_positions:
-                        self.matched_positions.append(i)
-                    matched_words.append(i)
+                # Mark the PREVIOUS fragment as matched (grey it out)
+                if old_frag < len(self.fragments):
+                    prev_frag = self.fragments[old_frag]
+                    for i in range(prev_frag.word_start, prev_frag.word_end + 1):
+                        if i not in self.matched_positions:
+                            self.matched_positions.append(i)
+                        matched_words.append(i)
                 
-                if verbose:
-                    print(f"[Match] MOVED: fragment {old_frag} -> {best_idx}, word position -> {self.current_position}")
+                # ALWAYS print when moving - this is important debug info
+                print(f"[Match] MOVED: frag {old_frag} -> {best_idx}")
+                print(f"        Spoken: '{spoken_text[:50]}...'")
+                print(f"        Matched: '{fragment.text[:50]}...'")
+                print(f"        Position: {self.current_position}, Greyed: {matched_words}")
             elif verbose:
                 print(f"[Match] STAYING at fragment {best_idx} (already there)")
         elif verbose:

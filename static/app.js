@@ -75,6 +75,7 @@ class SpeechPrompter {
             settingsBackdrop: document.getElementById('settingsBackdrop'),
             btnCloseSettings: document.getElementById('btnCloseSettings'),
             audioDevice: document.getElementById('audioDevice'),
+            speechModel: document.getElementById('speechModel'),
             scrollMargin: document.getElementById('scrollMargin'),
             scrollMarginValue: document.getElementById('scrollMarginValue'),
             scrollSpeed: document.getElementById('scrollSpeed'),
@@ -373,6 +374,61 @@ class SpeechPrompter {
             }
         } catch (error) {
             console.error('Error loading script:', error);
+        }
+    }
+
+    async saveSettings() {
+        const config = {
+            autoHideControls: this.autoHideControls,
+            mirrorText: this.mirrorText,
+            isMirrored: this.isMirrored,
+            modelName: this.elements.speechModel.value
+        };
+
+        fetch('/api/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(config),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.closeSettingsModal();
+                }
+            })
+            .catch(error => console.error('Error saving settings:', error));
+    }
+
+    async loadModels() {
+        try {
+            const response = await fetch('/api/models');
+            const data = await response.json();
+
+            const select = this.elements.speechModel;
+            select.innerHTML = '';
+
+            if (data.models.length === 0) {
+                const option = document.createElement('option');
+                option.text = "No models found";
+                select.add(option);
+                return;
+            }
+
+            data.models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.text = model;
+                if (model === data.current_model) {
+                    option.selected = true;
+                }
+                select.add(option);
+            });
+        } catch (error) {
+            console.error('Error loading models:', error);
+            const select = this.elements.speechModel;
+            select.innerHTML = '<option>Error loading models</option>';
         }
     }
 
@@ -729,21 +785,23 @@ class SpeechPrompter {
     }
 
     loadSettings() {
-        const settings = JSON.parse(localStorage.getItem('prompterSettings') || '{}');
+        // Load local settings
+        const savedSettings = localStorage.getItem('speechPrompterSettings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
 
-        this.fontSize = settings.fontSize || 48;
-        this.isMirrored = settings.isMirrored || false;
-        this.scrollMargin = settings.scrollMargin || 30;
-        this.scrollSpeed = settings.scrollSpeed || 300;
-        this.autoHideControls = settings.autoHideControls || false;
+            this.fontSize = settings.fontSize || 48;
+            this.scrollMargin = settings.scrollMargin || 30;
+            this.scrollSpeed = settings.scrollSpeed || 300;
+            this.autoHideControls = settings.autoHideControls || false;
+            this.isMirrored = settings.isMirrored || false;
 
-        // Apply settings
-        document.documentElement.style.setProperty('--font-size-prompter', `${this.fontSize}px`);
-        document.documentElement.style.setProperty('--reading-line-position', `${this.scrollMargin}%`);
-        document.documentElement.style.setProperty('--scroll-duration', `${this.scrollSpeed}ms`);
+            this.applySettings();
+        }
 
-        this.elements.fontSizeDisplay.textContent = `${this.fontSize}px`;
-        this.elements.app.classList.toggle('mirrored', this.isMirrored);
+        // Load server settings (devices and models)
+        this.loadDevices();
+        this.loadModels();
     }
 
     saveSettings() {

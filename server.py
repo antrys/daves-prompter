@@ -212,12 +212,89 @@ async def get_script():
     }
 
 
+def list_models() -> List[str]:
+    """List available Vosk models in the models directory."""
+    models_dir = Path("models")
+    if not models_dir.exists():
+        return []
+    
+    models = []
+    for item in models_dir.iterdir():
+        if item.is_dir() and (item / "conf" / "model.conf").exists():
+            models.append(item.name)
+        elif item.is_dir() and item.name.startswith("vosk-model"):
+             # Fallback: assume it's a model if it starts with vosk-model
+             models.append(item.name)
+             
+    return sorted(models)
+
+
+@app.get("/api/models")
+async def list_available_models():
+    """List available speech recognition models."""
+    models = list_models()
+    current_model = speech_engine.model_path.name if speech_engine and speech_engine.model_path else None
+    return {
+        "models": models,
+        "current_model": current_model
+    }
+
+
+class ConfigRequest(BaseModel):
+    """Configuration update request."""
+    device_index: Optional[int] = None
+    model_name: Optional[str] = None
+
+
 @app.post("/api/config")
 async def update_config(request: ConfigRequest):
     """Update configuration."""
+    global speech_engine, is_running
+    
+    # Handle device update
     if speech_engine and request.device_index is not None:
         speech_engine.set_device(request.device_index)
-    
+        
+    # Handle model update
+    if request.model_name:
+        new_model_path = Path("models") / request.model_name
+        if new_model_path.exists():
+            # If engine exists and model is different, we need to reload
+            if speech_engine and speech_engine.model_path != new_model_path:
+                print(f"Switching model to: {request.model_name}")
+                
+                # Stop current engine
+                was_running = is_running
+                if was_running:
+                    speech_engine.stop()
+                    is_running = False
+                    await broadcast({"type": "status", "running": False})
+                
+                # Create new engine with new model
+                # Preserve device index
+                current_device = speech_engine.device_index
+                speech_engine.cleanup()
+                
+                speech_engine = SpeechEngine(str(new_model_path), device_index=current_device)
+                
+                # Re-attach callbacks
+                speech_engine.on_partial(on_partial_result)
+                speech_engine.on_result(on_final_result)
+                speech_engine.on_words(on_words_result)
+                
+                # Load the new model
+                if speech_engine.load_model():
+                    print("New model loaded successfully")
+                    
+                    # Restart if it was running
+                    if was_running:
+                        if speech_engine.start():
+                            is_running = True
+                            await broadcast({"type": "status", "running": True})
+                else:
+                    print("Failed to load new model")
+                    return JSONResponse(status_code=500, content={"error": "Failed to load new model"})
+                    
     return {"success": True}
 
 

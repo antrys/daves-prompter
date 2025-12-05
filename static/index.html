@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dave's Prompter</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <!-- JSZip for ODT file parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
+
 <body>
     <div id="app" class="app">
         <!-- Top Control Bar -->
@@ -18,34 +21,35 @@
             <div class="control-group">
                 <button id="btnLoadScript" class="btn btn-primary" title="Load Script">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="12" y1="18" x2="12" y2="12"/>
-                        <line x1="9" y1="15" x2="15" y2="15"/>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <line x1="9" y1="15" x2="15" y2="15" />
                     </svg>
                     <span>Load Script</span>
                 </button>
-                
+
                 <button id="btnStartStop" class="btn btn-accent" title="Start/Stop (Space)">
                     <svg id="iconPlay" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <polygon points="5 3 19 12 5 21 5 3"/>
+                        <polygon points="5 3 19 12 5 21 5 3" />
                     </svg>
-                    <svg id="iconStop" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none">
-                        <rect x="6" y="4" width="4" height="16"/>
-                        <rect x="14" y="4" width="4" height="16"/>
+                    <svg id="iconStop" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"
+                        style="display:none">
+                        <rect x="6" y="4" width="4" height="16" />
+                        <rect x="14" y="4" width="4" height="16" />
                     </svg>
                     <span id="btnStartStopText">Start</span>
                 </button>
-                
+
                 <button id="btnReset" class="btn" title="Reset (R)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="1 4 1 10 7 10"/>
-                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                        <polyline points="1 4 1 10 7 10" />
+                        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
                     </svg>
                     <span>Reset</span>
                 </button>
             </div>
-            
+
             <div class="control-group center">
                 <div class="status-indicator" id="statusIndicator">
                     <span class="status-dot"></span>
@@ -55,79 +59,81 @@
                     <span id="wordProgress">0 / 0</span>
                 </div>
             </div>
-            
+
             <div class="control-group right">
                 <button id="btnFontMinus" class="btn btn-icon" title="Decrease Font (-)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
                 <span id="fontSizeDisplay" class="font-size-display">48px</span>
                 <button id="btnFontPlus" class="btn btn-icon" title="Increase Font (+)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
                 </button>
-                
+
                 <button id="btnMirror" class="btn btn-icon" title="Mirror Mode (M)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="8 3 4 7 8 11"/>
-                        <polyline points="16 3 20 7 16 11"/>
-                        <line x1="4" y1="7" x2="20" y2="7"/>
-                        <line x1="12" y1="14" x2="12" y2="21"/>
+                        <polyline points="8 3 4 7 8 11" />
+                        <polyline points="16 3 20 7 16 11" />
+                        <line x1="4" y1="7" x2="20" y2="7" />
+                        <line x1="12" y1="14" x2="12" y2="21" />
                     </svg>
                 </button>
-                
+
                 <button id="btnSettings" class="btn btn-icon" title="Settings">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                     </svg>
                 </button>
-                
+
                 <button id="btnFullscreen" class="btn btn-icon" title="Fullscreen (F)">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 3 21 3 21 9"/>
-                        <polyline points="9 21 3 21 3 15"/>
-                        <line x1="21" y1="3" x2="14" y2="10"/>
-                        <line x1="3" y1="21" x2="10" y2="14"/>
+                        <polyline points="15 3 21 3 21 9" />
+                        <polyline points="9 21 3 21 3 15" />
+                        <line x1="21" y1="3" x2="14" y2="10" />
+                        <line x1="3" y1="21" x2="10" y2="14" />
                     </svg>
                 </button>
-                
+
                 <button id="btnShutdown" class="btn btn-icon btn-danger" title="Shutdown Server">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
-                        <line x1="12" y1="2" x2="12" y2="12"/>
+                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                        <line x1="12" y1="2" x2="12" y2="12" />
                     </svg>
                 </button>
             </div>
         </header>
-        
+
         <!-- Main Prompter Display -->
         <main class="prompter-container" id="prompterContainer">
             <div class="prompter-content" id="prompterContent">
                 <div class="placeholder-message" id="placeholderMessage">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <polyline points="10 9 9 9 8 9"/>
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <polyline points="10 9 9 9 8 9" />
                     </svg>
                     <h2>No Script Loaded</h2>
                     <p>Click "Load Script" to add your text</p>
                 </div>
-                
+
                 <div class="script-display" id="scriptDisplay">
                     <!-- Words will be injected here -->
                 </div>
             </div>
-            
+
             <!-- Reading position indicator line -->
             <div class="reading-line" id="readingLine"></div>
         </main>
-        
+
         <!-- Script Load Modal -->
         <div class="modal" id="scriptModal">
             <div class="modal-backdrop" id="modalBackdrop"></div>
@@ -135,19 +141,21 @@
                 <div class="modal-header">
                     <h2>Load Script</h2>
                     <button class="btn btn-icon modal-close" id="btnCloseModal">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
                     </button>
                 </div>
                 <div class="modal-body">
                     <textarea id="scriptInput" placeholder="Paste or type your script here..."></textarea>
                     <div class="drop-zone" id="dropZone">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="17 8 12 3 7 8"/>
-                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
                         </svg>
                         <p>Drop a .txt or .odt file here</p>
                     </div>
@@ -158,7 +166,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Settings Modal -->
         <div class="modal" id="settingsModal">
             <div class="modal-backdrop" id="settingsBackdrop"></div>
@@ -166,9 +174,10 @@
                 <div class="modal-header">
                     <h2>Settings</h2>
                     <button class="btn btn-icon modal-close" id="btnCloseSettings">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
                         </svg>
                     </button>
                 </div>
@@ -179,19 +188,26 @@
                             <option value="">Loading devices...</option>
                         </select>
                     </div>
-                    
+
+                    <div class="setting-group">
+                        <label for="speechModel">Speech Model</label>
+                        <select id="speechModel">
+                            <option value="">Loading models...</option>
+                        </select>
+                    </div>
+
                     <div class="setting-group">
                         <label for="scrollMargin">Reading Line Position</label>
                         <input type="range" id="scrollMargin" min="10" max="50" value="30">
                         <span id="scrollMarginValue">30%</span>
                     </div>
-                    
+
                     <div class="setting-group">
                         <label for="scrollSpeed">Scroll Smoothness</label>
                         <input type="range" id="scrollSpeed" min="100" max="1000" value="300">
                         <span id="scrollSpeedValue">300ms</span>
                     </div>
-                    
+
                     <div class="setting-group checkbox-group">
                         <label>
                             <input type="checkbox" id="autoHideControls">
@@ -205,10 +221,8 @@
             </div>
         </div>
     </div>
-    
+
     <script src="/static/app.js"></script>
 </body>
+
 </html>
-
-
-

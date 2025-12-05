@@ -26,7 +26,7 @@ MODEL_PATHS = [
     "models/vosk-model-en-us-0.42-gigaspeech",
 ]
 
-app = FastAPI(title="Speech Prompter")
+app = FastAPI(title="Dave's Prompter")
 
 # Global state
 speech_engine: Optional[SpeechEngine] = None

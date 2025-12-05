@@ -1,4 +1,4 @@
-# Speech-Synchronized Teleprompter
+# Dave's Prompter
 
 > **Maintenance Status:** 🛑 **As-Is / Passive** - This is a personal weekend project released for the community. I do not plan to provide active support or updates. Pull requests are welcome but may not be reviewed.
 

@@ -1,5 +1,5 @@
 /**
- * Speech Prompter - Frontend Application
+ * Dave's Prompter - Frontend Application
  * Handles WebSocket connection, UI interactions, and auto-scrolling
  */
 

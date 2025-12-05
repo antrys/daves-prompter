@@ -1,5 +1,5 @@
 /* 
- * Speech Prompter Styles
+ * Dave's Prompter Styles
  * A clean, readable teleprompter interface optimized for the Elgato Prompter
  */
 
@@ -9,53 +9,56 @@
     --bg-secondary: #14151a;
     --bg-tertiary: #1e1f26;
     --bg-overlay: rgba(10, 10, 12, 0.95);
-    
+
     --text-primary: #f0f0f2;
     --text-secondary: #a0a0a8;
     --text-muted: #606068;
     --text-highlight: #ffffff;
-    
+
     --accent-primary: #4ecdc4;
     --accent-secondary: #45b7aa;
     --accent-glow: rgba(78, 205, 196, 0.3);
-    
+
     --word-current: #4ecdc4;
     --word-spoken: rgba(78, 205, 196, 0.4);
     --word-upcoming: #f0f0f2;
-    
+
     --danger: #ff6b6b;
     --success: #4ecdc4;
-    
+
     /* Typography */
     --font-display: 'Literata', Georgia, serif;
     --font-ui: system-ui, -apple-system, sans-serif;
-    
+
     /* Spacing */
     --space-xs: 4px;
     --space-sm: 8px;
     --space-md: 16px;
     --space-lg: 24px;
     --space-xl: 32px;
-    
+
     /* Prompter settings */
     --font-size-prompter: 48px;
     --line-height-prompter: 1.6;
     --reading-line-position: 30%;
     --scroll-duration: 800ms;
-    
+
     /* Animation */
     --transition-fast: 150ms ease;
     --transition-normal: 300ms ease;
 }
 
 /* Reset */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
-html, body {
+html,
+body {
     height: 100%;
     overflow: hidden;
 }
@@ -204,8 +207,15 @@ body {
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
 }
 
 .status-text {
@@ -257,12 +267,11 @@ body {
     right: 0;
     top: var(--reading-line-position);
     height: 2px;
-    background: linear-gradient(90deg, 
-        transparent, 
-        var(--accent-primary) 20%, 
-        var(--accent-primary) 80%, 
-        transparent
-    );
+    background: linear-gradient(90deg,
+            transparent,
+            var(--accent-primary) 20%,
+            var(--accent-primary) 80%,
+            transparent);
     opacity: 0.5;
     pointer-events: none;
     z-index: 10;
@@ -323,22 +332,26 @@ body {
 }
 
 .word.spoken {
-    color: #505058; /* Medium-dark grey for passed text */
+    color: #505058;
+    /* Medium-dark grey for passed text */
 }
 
 .word.upcoming {
-    color: var(--text-primary); /* Normal bright text */
+    color: var(--text-primary);
+    /* Normal bright text */
 }
 
 /* Preserve script formatting */
 .script-display br {
     display: block;
     content: "";
-    margin-top: 0.5em; /* Space for line breaks */
+    margin-top: 0.5em;
+    /* Space for line breaks */
 }
 
-.script-display br + br {
-    margin-top: 1em; /* Extra space for paragraph breaks */
+.script-display br+br {
+    margin-top: 1em;
+    /* Extra space for paragraph breaks */
 }
 
 /* Modal */
@@ -380,6 +393,7 @@ body {
         opacity: 0;
         transform: scale(0.95) translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -559,15 +573,15 @@ body {
         flex-wrap: wrap;
         gap: var(--space-sm);
     }
-    
+
     .control-group span:not(.status-text):not(.status-dot) {
         display: none;
     }
-    
+
     .btn {
         padding: var(--space-sm);
     }
-    
+
     .script-display {
         padding: var(--space-md);
         font-size: calc(var(--font-size-prompter) * 0.75);
@@ -587,6 +601,3 @@ body {
 }
 
 /* No animations needed - keep it simple */
-
-
-

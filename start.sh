@@ -1,5 +1,5 @@
 #!/bin/bash
-# Start the Speech Prompter server
+# Start Dave's Prompter server
 # Uses a clean environment to avoid Cursor's Python hijacking
 
 cd "$(dirname "$0")"

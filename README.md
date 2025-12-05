@@ -4,6 +4,8 @@
 
 A teleprompter application that uses Vosk speech recognition to automatically scroll and highlight your script in sync with your spoken words. Designed for use with the **Elgato Prompter** on Linux (where official software is unavailable), but works with any screen.
 
+![Prompter Screenshot](images/screenshot.webp)
+
 ## Features
 
 - **Real-time speech recognition** - Uses Vosk for offline, low-latency speech-to-text

@@ -1,6 +1,8 @@
 # Speech-Synchronized Teleprompter
 
-A teleprompter application that uses Vosk speech recognition to automatically scroll and highlight your script in sync with your spoken words. Designed for use with the Elgato Prompter on Arch Linux.
+> **Maintenance Status:** 🛑 **As-Is / Passive** - This is a personal weekend project released for the community. I do not plan to provide active support or updates. Pull requests are welcome but may not be reviewed.
+
+A teleprompter application that uses Vosk speech recognition to automatically scroll and highlight your script in sync with your spoken words. Designed for use with the **Elgato Prompter** on Linux (where official software is unavailable), but works with any screen.
 
 ## Features
 

@@ -8,26 +8,28 @@ A teleprompter application that uses Vosk speech recognition to automatically sc
 
 - **Real-time speech recognition** - Uses Vosk for offline, low-latency speech-to-text
 - **Auto-scroll sync** - Script scrolls automatically to match what you're saying
-- **Word highlighting** - Current word is highlighted as you speak
+- **Spoken text dimming** - Words turn grey as you speak them, so you always know your place
 - **Mirror mode** - Flip display horizontally for beam-splitter prompters
-- **Configurable display** - Adjust font size, colors, and scroll behavior
+- **Universal Compatibility** - Runs in any web browser, making it compatible with tablets, phones, and any teleprompter screen
 
 ## Requirements
 
 - Python 3.8+
-- PortAudio (for PyAudio)
+- PortAudio (Required for microphone access via PyAudio)
 - Vosk speech recognition model
 
 ## Installation
 
 ### 1. Install system dependencies
 
+You need PortAudio for the microphone to work.
+
 ```bash
 # Arch Linux
 sudo pacman -S portaudio python-pyaudio
 
-# Or install PyAudio via pip after installing portaudio
-sudo pacman -S portaudio
+# Ubuntu/Debian
+sudo apt install portaudio19-dev python3-pyaudio
 ```
 
 ### 2. Install Python dependencies

@@ -12,6 +12,7 @@ class SpeechPrompter {
         this.wordCount = 0;
         this.currentPosition = 0;
         this.fontSize = 48;
+        this.textWidth = 80;
         this.scrollMargin = 30;
         this.scrollSpeed = 300;
         this.autoHideControls = false;
@@ -50,6 +51,9 @@ class SpeechPrompter {
             btnFontMinus: document.getElementById('btnFontMinus'),
             btnFontPlus: document.getElementById('btnFontPlus'),
             fontSizeDisplay: document.getElementById('fontSizeDisplay'),
+            btnWidthMinus: document.getElementById('btnWidthMinus'),
+            btnWidthPlus: document.getElementById('btnWidthPlus'),
+            widthDisplay: document.getElementById('widthDisplay'),
             btnMirror: document.getElementById('btnMirror'),
             btnSettings: document.getElementById('btnSettings'),
             btnFullscreen: document.getElementById('btnFullscreen'),
@@ -92,6 +96,8 @@ class SpeechPrompter {
         this.elements.btnReset.addEventListener('click', () => this.resetPosition());
         this.elements.btnFontMinus.addEventListener('click', () => this.adjustFontSize(-4));
         this.elements.btnFontPlus.addEventListener('click', () => this.adjustFontSize(4));
+        this.elements.btnWidthMinus.addEventListener('click', () => this.adjustTextWidth(-5));
+        this.elements.btnWidthPlus.addEventListener('click', () => this.adjustTextWidth(5));
         this.elements.btnMirror.addEventListener('click', () => this.toggleMirror());
         this.elements.btnSettings.addEventListener('click', () => this.openSettingsModal());
         this.elements.btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
@@ -155,6 +161,14 @@ class SpeechPrompter {
             case '-':
             case '_':
                 this.adjustFontSize(-4);
+                break;
+            case '[':
+            case '{':
+                this.adjustTextWidth(-5);
+                break;
+            case ']':
+            case '}':
+                this.adjustTextWidth(5);
                 break;
             case 'm':
             case 'M':
@@ -728,6 +742,13 @@ class SpeechPrompter {
         this.saveSettings();
     }
 
+    adjustTextWidth(delta) {
+        this.textWidth = Math.max(20, Math.min(100, this.textWidth + delta));
+        document.documentElement.style.setProperty('--text-width', `${this.textWidth}%`);
+        this.elements.widthDisplay.textContent = `${this.textWidth}%`;
+        this.saveSettings();
+    }
+
     toggleMirror() {
         this.isMirrored = !this.isMirrored;
         this.elements.app.classList.toggle('mirrored', this.isMirrored);
@@ -785,19 +806,34 @@ class SpeechPrompter {
     }
 
     loadSettings() {
-        // Load local settings
-        const savedSettings = localStorage.getItem('speechPrompterSettings');
-        if (savedSettings) {
-            const settings = JSON.parse(savedSettings);
-
-            this.fontSize = settings.fontSize || 48;
-            this.scrollMargin = settings.scrollMargin || 30;
-            this.scrollSpeed = settings.scrollSpeed || 300;
-            this.autoHideControls = settings.autoHideControls || false;
-            this.isMirrored = settings.isMirrored || false;
-
-            this.applySettings();
+        // Load local settings - try new key first, then fallback to old
+        let savedSettings = localStorage.getItem('prompterSettings');
+        if (!savedSettings) {
+            savedSettings = localStorage.getItem('speechPrompterSettings');
         }
+
+        if (savedSettings) {
+            try {
+                const settings = JSON.parse(savedSettings);
+
+                this.fontSize = settings.fontSize || 48;
+                this.textWidth = settings.textWidth || 80;
+                this.scrollMargin = settings.scrollMargin || 30;
+                this.scrollSpeed = settings.scrollSpeed || 300;
+                this.autoHideControls = settings.autoHideControls || false;
+                this.isMirrored = settings.isMirrored || false;
+
+                this.applySettings();
+            } catch (e) {
+                console.error('Error parsing settings:', e);
+            }
+        }
+
+        // Ensure UI matches state after loading
+        this.elements.fontSizeDisplay.textContent = `${this.fontSize}px`;
+        this.elements.widthDisplay.textContent = `${this.textWidth}%`;
+        document.documentElement.style.setProperty('--font-size-prompter', `${this.fontSize}px`);
+        document.documentElement.style.setProperty('--text-width', `${this.textWidth}%`);
 
         // Load server settings (devices and models)
         this.loadDevices();
@@ -829,6 +865,7 @@ class SpeechPrompter {
         // Save to localStorage
         const settings = {
             fontSize: this.fontSize,
+            textWidth: this.textWidth,
             isMirrored: this.isMirrored,
             scrollMargin: this.scrollMargin,
             scrollSpeed: this.scrollSpeed,

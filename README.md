@@ -26,6 +26,12 @@ A teleprompter application that uses Vosk speech recognition to automatically sc
 
 You need PortAudio for the microphone to work.
 
+**Windows:**
+Usually, `pip install pyaudio` works out of the box with pre-built wheels. If it fails, you may need to install the [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+
+**Linux:**
+You need to install the development headers:
+
 ```bash
 # Arch Linux
 sudo pacman -S portaudio python-pyaudio
@@ -59,6 +65,16 @@ For better accuracy, you can use a larger model:
 
 ### 1. Start the server
 
+### Windows
+Double-click `start.bat`.
+
+### Linux/Mac
+Run the startup script:
+```bash
+./start.sh
+```
+
+Or run directly with Python:
 ```bash
 python server.py
 ```

@@ -1,8 +1,7 @@
 # Dave's Prompter
 
-> **Maintenance Status:** 🛑 **As-Is / Passive** - This is a personal weekend project released for the community. I do not plan to provide active support or updates. Pull requests are welcome but may not be reviewed.
 
-A teleprompter application that uses Vosk speech recognition to automatically scroll and highlight your script in sync with your spoken words. Designed for use with the **Elgato Prompter** on Linux (where official software is unavailable), but works with any screen.
+A teleprompter application that uses Vosk speech recognition to automatically scroll and highlight your script in sync with your spoken words. Designed for use with the **Elgato Prompter** but works with any screen on Linux, Windows, or Mac.
 
 ![Prompter Screenshot](images/screenshot.webp)
 
@@ -10,9 +9,10 @@ A teleprompter application that uses Vosk speech recognition to automatically sc
 
 - **Real-time speech recognition** - Uses Vosk for offline, low-latency speech-to-text
 - **Auto-scroll sync** - Script scrolls automatically to match what you're saying
+- **HTTP Mirroring / Sync** - Open the app on your main computer, then open it on any other device (tablet, phone, second screen) on the same network. All instances stay perfectly in sync.
 - **Spoken text dimming** - Words turn grey as you speak them, so you always know your place
 - **Mirror mode** - Flip display horizontally for beam-splitter prompters
-- **Universal Compatibility** - Runs in any web browser, making it compatible with tablets, phones, and any teleprompter screen
+- **Universal Compatibility** - Runs in any web browser
 
 ## Requirements
 
@@ -26,8 +26,10 @@ A teleprompter application that uses Vosk speech recognition to automatically sc
 
 You need PortAudio for the microphone to work.
 
-**Windows:**
-Usually, `pip install pyaudio` works out of the box with pre-built wheels. If it fails, you may need to install the [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+**Windows/Mac:**
+Usually, nothing special is needed as `pip install pyaudio` includes binaries. 
+If it fails on Windows, install [Visual C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
+If it fails on Mac, use Homebrew: `brew install portaudio`
 
 **Linux:**
 You need to install the development headers:
@@ -50,31 +52,24 @@ pip install -r requirements.txt
 
 Download a Vosk model and extract it to the `models/` directory:
 
-```bash
-# Small English model (~50MB) - good balance of speed and accuracy
-cd models
-wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
-unzip vosk-model-small-en-us-0.15.zip
-cd ..
-```
-
-For better accuracy, you can use a larger model:
-- `vosk-model-en-us-0.22` (~1.8GB) - Most accurate
+1. Go to [https://alphacephei.com/vosk/models](https://alphacephei.com/vosk/models)
+2. Download a model (e.g., `vosk-model-small-en-us-0.15` for speed or `vosk-model-en-us-0.22` for accuracy)
+3. Unzip it into the `models` folder so you have `models/vosk-model-small-en-us-0.15/`
 
 ## Usage
 
 ### 1. Start the server
 
-### Windows
+**Windows:**
 Double-click `start.bat`.
 
-### Linux/Mac
+**Linux/Mac:**
 Run the startup script:
 ```bash
 ./start.sh
 ```
 
-Or run directly with Python:
+Or run directly with Python on any OS:
 ```bash
 python server.py
 ```
@@ -83,10 +78,17 @@ The server will start on `http://localhost:8765`
 
 ### 2. Open the prompter display
 
-Open a browser on your Elgato Prompter screen and navigate to:
+Open a browser on your Elgato Prompter screen (or any other screen) and navigate to:
 ```
 http://localhost:8765
 ```
+
+**Remote Control / Mirroring:**
+To control the prompter from a different device (e.g., using your laptop to control a tablet prompter), connect the second device to the same Wi-Fi network and navigate to:
+```
+http://<YOUR_COMPUTER_IP>:8765
+```
+Both screens will stay in sync.
 
 ### 3. Load your script
 
@@ -97,14 +99,20 @@ http://localhost:8765
 
 Click "Start" to begin speech recognition. The display will automatically scroll and highlight words as you speak.
 
-## Configuration
+## Controls & Settings
 
-Access settings via the gear icon:
+### Top Control Bar
+- **Font Size** (`+/-`) - Adjust text size
+- **Text Width** (`[`/`]`) - Adjust how wide the text block is on screen
+- **Mirror Mode** (`M`) - Flip display horizontally for teleprompter glass
+- **Fullscreen** (`F`) - Toggle fullscreen mode
 
-- **Font Size** - Adjust text size for readability
-- **Mirror Mode** - Flip display horizontally
+### Settings Menu (Gear Icon)
 - **Audio Device** - Select microphone input
-- **Scroll Margin** - How far from the top the current line should be
+- **Speech Model** - Choose which Vosk model to use
+- **Reading Line Position** - Adjust where the active line sits vertically
+- **Scroll Smoothness** - Tweak how quickly/smoothly the text reacts
+- **Auto-hide controls** - Hide the top bar when the prompter is active
 
 ## Keyboard Shortcuts
 
@@ -118,7 +126,7 @@ Access settings via the gear icon:
 ```
 ┌─────────────────┐     WebSocket      ┌──────────────────────┐
 │  Python Backend │ ←───────────────→  │   Web Frontend       │
-│  - Vosk ASR     │                    │   (Prompter Display) │
+│  - Vosk ASR     │    (Broadcasts)    │   (Prompter Display) │
 │  - Audio Input  │                    │   - Script Display   │
 │  - Word Matching│                    │   - Auto-scroll      │
 └─────────────────┘                    └──────────────────────┘
@@ -128,7 +136,7 @@ Access settings via the gear icon:
 
 ### No audio input detected
 - Check that your microphone is connected and selected
-- Ensure PortAudio is installed: `pacman -S portaudio`
+- Ensure PortAudio is installed
 - List audio devices: `python -c "import pyaudio; p = pyaudio.PyAudio(); [print(i, p.get_device_info_by_index(i)['name']) for i in range(p.get_device_count())]"`
 
 ### Speech recognition is slow/inaccurate

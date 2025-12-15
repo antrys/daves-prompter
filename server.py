@@ -61,6 +61,9 @@ async def broadcast(message: dict):
         except Exception:
             disconnected.add(client)
     
+    if message.get("type") == "match":
+        print(f"[Server] Broadcasting match: index {message.get('word_index')} ('{message.get('matched_words')}')")
+    
     # Clean up disconnected clients
     for client in disconnected:
         connected_clients.discard(client)
@@ -476,7 +479,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
-    uvicorn.run(app, host=HOST, port=PORT)
+    # Run with auto-reload for development
+    uvicorn.run("server:app", host=HOST, port=PORT, reload=True)
 
 
 

@@ -198,10 +198,14 @@ class WordMatcher:
         # but requires actual word matches, not just similar characters
         score = fuzz.token_set_ratio(spoken_normalized, fragment.normalized)
         
-        # Penalize if lengths are very different (prevents partial word matches)
-        len_ratio = min(len(spoken_normalized), len(fragment.normalized)) / max(len(spoken_normalized), len(fragment.normalized))
-        if len_ratio < 0.3:
-            score *= 0.7  # Significant penalty for very different lengths
+        # Penalize if lengths are very different, BUT only if the match isn't stellar.
+        # If we have a near-perfect subset match (score > 85), don't punish it.
+        # This handles the case where spoken buffer is long ("...clause 1 and clause 2")
+        # and we are trying to match "clause 2".
+        if score < 85:
+            len_ratio = min(len(spoken_normalized), len(fragment.normalized)) / max(len(spoken_normalized), len(fragment.normalized))
+            if len_ratio < 0.3:
+                score *= 0.8  # Reduced penalty (was 0.7)
         
         return score
     
@@ -300,7 +304,7 @@ class WordMatcher:
         # IMPORTANT: Only use the last N words, not the entire accumulated text
         # Vosk accumulates speech, but we only care about recent words
         # to detect which fragment the user is currently reading
-        max_words = 15  # About 1-2 fragments worth
+        max_words = 12  # Reduced to help flush old fragments faster
         if len(spoken_words) > max_words:
             spoken_words = spoken_words[-max_words:]
         
@@ -339,10 +343,48 @@ class WordMatcher:
             elif verbose:
                 print(f"[Match] STAYING at fragment {best_idx} (already there)")
 
+            # --- SNAP TO END ---
+            # If we have a very high confidence match, assume the user has finished the fragment.
+            # This is "predictive" in that we don't wait for word-by-word confirmation of the last stragglers.
+            snap_to_end = False
+            avg_word_len = len(fragment.normalized) / (fragment.word_end - fragment.word_start + 1) if (fragment.word_end - fragment.word_start + 1) > 0 else 5
+            
+            # Count roughly how many words were spoken
+            # We use character length as a proxy because spoken_words might contain noise or splits
+            # But the 'spoken_words' list is what we have.
+            
+            # Simple word count ratio
+            frag_word_count = fragment.word_end - fragment.word_start + 1
+            if score >= 90:
+                 # Only snap if we have spoken a significant portion of the words in the fragment
+                 # Logic:
+                 # - Short fragments (<= 5 words): Require 50% (e.g. 3/5 or 2/4). This handles "but your bill isn't?"
+                 # - Long fragments (> 5 words): Require 75% to prevent premature jumps on long sentences like "Meanwhile, the net weight..."
+                 
+                 ratio_threshold = 0.5 if frag_word_count <= 5 else 0.75
+                 
+                 if len(spoken_words) >= frag_word_count * ratio_threshold:
+                     snap_to_end = True
+                 elif verbose:
+                     print(f"[Match] High score {score} but length ratio {len(spoken_words)}/{frag_word_count} < {ratio_threshold} too low for snap")
+            
+            if snap_to_end:
+                 # Snap to end of fragment
+                 new_pos = fragment.word_end
+                 if new_pos > self.current_position:
+                      self.current_position = new_pos
+                      for i in range(fragment.word_start, new_pos + 1):
+                            if i not in self.matched_positions:
+                                self.matched_positions.append(i)
+                                matched_words.append(i)
+                      if verbose:
+                           print(f"[Match] SNAPPED to end of fragment {best_idx}")
+
             # --- INTRA-FRAGMENT TRACKING ---
-            # Now try to match specific words WITHIN the current fragment
-            # This allows us to highlight words as they are spoken, not just at the end
-            if best_idx == self.current_fragment:
+            # If we didn't snap, or even if we did (to double check context?), 
+            # we try to match specific words. 
+            # (If we snapped, new_pos is already fragment.word_end, so this won't advance it further, which is fine)
+            if not snap_to_end and best_idx == self.current_fragment:
                 # Get the words in the current fragment
                 frag_words = re.findall(r"[\w']+", fragment.text.lower())
                 
@@ -366,7 +408,8 @@ class WordMatcher:
                                 self.matched_positions.append(i)
                                 matched_words.append(i)
         elif verbose:
-            print(f"[Match] NO MOVE: score {score:.0f} not confident enough")
+            # print(f"[Match] NO MOVE: score {score:.0f} not confident enough")
+            pass
         
         return MatchResult(
             word_index=self.current_position,
@@ -395,23 +438,66 @@ class WordMatcher:
         # Only look at words AFTER our current position (plus a small lookbehind for overlap)
         start_search = max(0, current_rel_pos - 1)
         
-        # Iterate forward through fragment
+        # Iterate forward through fragment to find potential matches
+        best_match_idx = None
+        
+        # We check the LAST 3 words spoken to see if any of them match the fragment words
+        # We prioritize later matches (further in the fragment)
+        lookback_limit = min(len(spoken_words), 4)
+        
         for i in range(start_search, len(frag_words)):
-            # Check if the word at i matches the LAST spoken word
-            if frag_words[i] == spoken_words[-1]:
-                # Potential match, check previous words if available
-                match = True
-                # Check up to 3 previous words for context
-                check_len = min(len(spoken_words), 3)
-                for j in range(1, check_len):
-                    if i - j < 0 or frag_words[i-j] != spoken_words[-1-j]:
-                        match = False
-                        break
+            # Check against the last few spoken words
+            for k in range(lookback_limit):
+                spoken_word_idx = len(spoken_words) - 1 - k
+                spoken_word = spoken_words[spoken_word_idx]
                 
-                if match:
-                    return i
+                fw = frag_words[i]
+                sw = spoken_word
+                
+                # Check match - allow fuzzy!
+                is_match = False
+                if fw == sw:
+                    is_match = True
+                elif len(sw) >= 3 and fw.startswith(sw): # "notic" matches "notice"
+                     is_match = True
+                elif len(fw) >= 3 and sw.startswith(fw): # "notice" matches "notices"
+                     is_match = True
+                elif fuzz.ratio(fw, sw) > 85: # typo tolerance
+                     is_match = True
+                
+                # Check if this fragment word matches this spoken word
+                if is_match:
+                    # Potential match found at frag_words[i] matching spoken_words[spoken_word_idx]
+                    # Verify context with words BEFORE this match
                     
-        return None
+                    # Context check window
+                    check_len = min(spoken_word_idx + 1, 3) 
+                    if check_len <= 1:
+                        # If no context (just 1 word), only accept if it's very close to current pos
+                        # or if it's a longer word (len > 3) to avoid jumping on "a", "the", etc.
+                        if len(spoken_word) > 3 or (i - current_rel_pos) <= 2:
+                            best_match_idx = i
+                        continue
+
+                    mismatches = 0
+                    valid_context_checks = 0
+                    
+                    for j in range(1, check_len + 1): # Check previous j words
+                        if i - j >= 0 and spoken_word_idx - j >= 0:
+                            valid_context_checks += 1
+                            # For context, we can be a bit strict to prevent false positives, 
+                            # but let's allow slight fuzz too
+                            cfw = frag_words[i-j]
+                            csw = spoken_words[spoken_word_idx-j]
+                            if cfw != csw and fuzz.ratio(cfw, csw) < 80:
+                                mismatches += 1
+                    
+                    # Allow mismatches proportional to length, but max 1 for short bursts
+                    if valid_context_checks > 0 and mismatches <= 1:
+                        best_match_idx = i
+                        break # Found a match for this fragment word, stop checking other spoken words against it
+        
+        return best_match_idx
     
     def match_partial(self, partial_text: str) -> Optional[int]:
         """

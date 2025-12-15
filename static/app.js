@@ -587,8 +587,9 @@ class SpeechPrompter {
                     .replace(/ {2,}/g, (spaces) => '&nbsp;'.repeat(spaces.length));  // Preserve multiple spaces
                 html += withBreaks || ' ';
             } else {
-                // Punctuation
-                html += this.escapeHtml(token);
+                // Punctuation - associate with previous word for highlighting
+                // Use a span to allow styling
+                html += `<span class="punct" data-prev-index="${wordIndex - 1}">${this.escapeHtml(token)}</span>`;
             }
         }
 
@@ -625,11 +626,14 @@ class SpeechPrompter {
 
         this._lastGreyedIndex = greyUpTo;
 
-        const words = this.elements.scriptDisplay.querySelectorAll('.word');
-        words.forEach((word, i) => {
-            if (i <= greyUpTo) {
-                word.classList.add('spoken');
-                word.classList.remove('upcoming');
+        const words = this.elements.scriptDisplay.querySelectorAll('.word, .punct[data-prev-index]');
+        words.forEach((el) => {
+            // Check index (data-index for words, data-prev-index for punct)
+            const idx = parseInt(el.dataset.index || el.dataset.prevIndex, 10);
+
+            if (idx <= greyUpTo) {
+                el.classList.add('spoken');
+                el.classList.remove('upcoming');
             }
         });
     }
@@ -641,7 +645,12 @@ class SpeechPrompter {
         }
         this._lastScrolledIndex = index;
 
-        const word = this.elements.scriptDisplay.querySelector(`[data-index="${index}"]`);
+        // Simple UX: Target the NEXT word.
+        // If the next word is on the same line, no scroll happens (delta ~ 0).
+        // If the next word is on a new line, we scroll that new line to the reading marker.
+        const targetIndex = Math.min(this.wordCount - 1, index + 1);
+
+        const word = this.elements.scriptDisplay.querySelector(`[data-index="${targetIndex}"]`);
         if (!word) return;
 
         const container = this.elements.prompterContent;
@@ -655,11 +664,6 @@ class SpeechPrompter {
 
         // Only scroll DOWN (forward), never up
         if (scrollDelta <= 0) {
-            return;
-        }
-
-        // Only scroll if word is far enough from reading line
-        if (scrollDelta < 30) {
             return;
         }
 

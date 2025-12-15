@@ -199,6 +199,13 @@ async def load_script(request: ScriptRequest):
         "word_count": word_matcher.get_word_count()
     })
     
+    # Force reset position for all clients since it's a new script
+    await broadcast({
+        "type": "reset",
+        "position": 0,
+        "context": word_matcher.get_context()
+    })
+    
     return {
         "success": True,
         "word_count": word_matcher.get_word_count()

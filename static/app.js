@@ -282,11 +282,14 @@ class SpeechPrompter {
                 break;
 
             case 'position':
-            case 'reset':
                 this.currentPosition = message.position;
                 this.highlightWord(message.position, []);
                 this.scrollToWord(message.position);
                 this.updateProgress();
+                break;
+
+            case 'reset':
+                this._performLocalReset();
                 break;
 
             case 'pong':
@@ -325,20 +328,31 @@ class SpeechPrompter {
     async resetPosition() {
         try {
             await fetch('/api/reset', { method: 'POST' });
-            // Reset all tracking
-            this._lastScrolledIndex = undefined;
-            this._lastGreyedIndex = -1;
-            // Scroll to top
-            this.elements.prompterContent.scrollTop = 0;
-            // Reset all words to upcoming (white)
-            const words = this.elements.scriptDisplay.querySelectorAll('.word');
-            words.forEach(word => {
-                word.classList.remove('spoken');
-                word.classList.add('upcoming');
-            });
+            this._performLocalReset();
         } catch (error) {
             console.error('Error resetting position:', error);
         }
+    }
+
+    _performLocalReset() {
+        // Reset all tracking
+        this._lastScrolledIndex = undefined;
+        this._lastGreyedIndex = -1;
+        this.currentPosition = 0;
+
+        // Scroll to top
+        if (this.elements.prompterContent) {
+            this.elements.prompterContent.scrollTop = 0;
+        }
+
+        // Reset all words and punctuation to upcoming (white)
+        const elements = this.elements.scriptDisplay.querySelectorAll('.word, .punct');
+        elements.forEach(el => {
+            el.classList.remove('spoken');
+            el.classList.add('upcoming');
+        });
+
+        this.updateProgress();
     }
 
     async loadDevices() {

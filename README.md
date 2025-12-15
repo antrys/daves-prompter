@@ -9,7 +9,7 @@ A teleprompter application that uses Vosk speech recognition to automatically sc
 
 - **Real-time speech recognition** - Uses Vosk for offline, low-latency speech-to-text
 - **Auto-scroll sync** - Script scrolls automatically to match what you're saying
-- **HTTP Mirroring / Sync** - Open the app on your main computer, then open it on any other device (tablet, phone, second screen) on the same network. All instances stay perfectly in sync.
+- **Control Room Sync** - Open the app's page on multiple devices (e.g., control room laptop + camera prompter). Loading a script or resetting on one device instantly updates all connected screens.
 - **Spoken text dimming** - Words turn grey as you speak them, so you always know your place
 - **Mirror mode** - Flip display horizontally for beam-splitter prompters
 - **Universal Compatibility** - Runs in any web browser
@@ -88,7 +88,7 @@ To control the prompter from a different device (e.g., using your laptop to cont
 ```
 http://<YOUR_COMPUTER_IP>:8765
 ```
-Both screens will stay in sync.
+Both screens will stay perfectly in sync. You can load a new script or hit "Reset" on your laptop, and the camera prompter (and any other connected screen) will instantly update to match.
 
 ### 3. Load your script
 

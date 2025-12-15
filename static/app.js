@@ -85,6 +85,7 @@ class SpeechPrompter {
             scrollSpeed: document.getElementById('scrollSpeed'),
             scrollSpeedValue: document.getElementById('scrollSpeedValue'),
             autoHideControls: document.getElementById('autoHideControls'),
+            dimSpoken: document.getElementById('dimSpoken'),
             btnSaveSettings: document.getElementById('btnSaveSettings'),
         };
     }
@@ -252,8 +253,15 @@ class SpeechPrompter {
                     this.wordCount = message.word_count;
                     this.renderScript();
                 }
+                if (message.settings) {
+                    this.applyGlobalSettings(message.settings);
+                }
                 this.currentPosition = message.position;
                 this.updateUI();
+                break;
+
+            case 'settings':
+                this.applyGlobalSettings(message.settings);
                 break;
 
             case 'script':
@@ -301,6 +309,22 @@ class SpeechPrompter {
     sendMessage(message) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(message));
+        }
+    }
+
+    applyGlobalSettings(settings) {
+        if (settings.dim_spoken !== undefined) {
+            this.dimSpoken = settings.dim_spoken;
+            // Apply visual
+            if (this.dimSpoken) {
+                this.elements.scriptDisplay.classList.remove('no-dimming');
+            } else {
+                this.elements.scriptDisplay.classList.add('no-dimming');
+            }
+            // Update UI
+            if (this.elements.dimSpoken) {
+                this.elements.dimSpoken.checked = this.dimSpoken;
+            }
         }
     }
 
@@ -366,8 +390,22 @@ class SpeechPrompter {
                     const option = document.createElement('option');
                     option.value = device.index;
                     option.textContent = device.name;
+                    if (device.index === data.current_device) {
+                        option.selected = true;
+                    }
                     this.elements.audioDevice.appendChild(option);
                 });
+                this.currentDeviceIndex = data.current_device;
+
+                // Sync initialized state
+                if (this.currentDeviceIndex === null || this.currentDeviceIndex === undefined) {
+                    // Server is on default device, but dropdown picked first available.
+                    // Adopt this as 'current' to prevent trigger on save.
+                    const val = this.elements.audioDevice.value;
+                    if (val !== '') {
+                        this.currentDeviceIndex = parseInt(val, 10);
+                    }
+                }
             }
         } catch (error) {
             console.error('Error loading devices:', error);
@@ -817,6 +855,7 @@ class SpeechPrompter {
         this.elements.scrollSpeed.value = this.scrollSpeed;
         this.elements.scrollSpeedValue.textContent = `${this.scrollSpeed}ms`;
         this.elements.autoHideControls.checked = this.autoHideControls;
+        this.elements.dimSpoken.checked = this.dimSpoken; // Update checkbox
     }
 
     closeSettingsModal() {
@@ -840,6 +879,20 @@ class SpeechPrompter {
                 this.scrollSpeed = settings.scrollSpeed || 300;
                 this.autoHideControls = settings.autoHideControls || false;
                 this.isMirrored = settings.isMirrored || false;
+                this.dimSpoken = settings.dimSpoken !== undefined ? settings.dimSpoken : true;
+
+                // Apply dimming preference immediately
+                if (this.dimSpoken) {
+                    this.elements.scriptDisplay.classList.remove('no-dimming');
+                } else {
+                    this.elements.scriptDisplay.classList.add('no-dimming');
+                }
+
+                // Update UI controls
+                if (this.elements.scrollMargin) this.elements.scrollMargin.value = this.scrollMargin;
+                if (this.elements.scrollSpeed) this.elements.scrollSpeed.value = this.scrollSpeed;
+                if (this.elements.autoHideControls) this.elements.autoHideControls.checked = this.autoHideControls;
+                if (this.elements.dimSpoken) this.elements.dimSpoken.checked = this.dimSpoken;
 
             } catch (e) {
                 console.error('Error parsing settings:', e);
@@ -863,16 +916,33 @@ class SpeechPrompter {
             this.scrollMargin = parseInt(this.elements.scrollMargin.value, 10);
             this.scrollSpeed = parseInt(this.elements.scrollSpeed.value, 10);
             this.autoHideControls = this.elements.autoHideControls.checked;
+            this.dimSpoken = this.elements.dimSpoken.checked;
+
+            // Sync global settings
+            fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dim_spoken: this.dimSpoken })
+            });
 
             // Update audio device
             const deviceIndex = this.elements.audioDevice.value;
-            if (deviceIndex !== '') {
+            if (deviceIndex !== '' && parseInt(deviceIndex, 10) !== this.currentDeviceIndex) {
+                const newIndex = parseInt(deviceIndex, 10);
                 fetch('/api/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ device_index: parseInt(deviceIndex, 10) })
+                    body: JSON.stringify({ device_index: newIndex })
                 });
+                this.currentDeviceIndex = newIndex;
             }
+        }
+
+        // Apply dimming preference
+        if (this.dimSpoken) {
+            this.elements.scriptDisplay.classList.remove('no-dimming');
+        } else {
+            this.elements.scriptDisplay.classList.add('no-dimming');
         }
 
         // Apply CSS variables

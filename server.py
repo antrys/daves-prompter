@@ -34,6 +34,9 @@ word_matcher = WordMatcher()
 connected_clients: Set[WebSocket] = set()
 is_running = False
 current_script = ""
+display_settings = {
+    "dim_spoken": True
+}
 main_loop: Optional[asyncio.AbstractEventLoop] = None
 
 
@@ -181,7 +184,10 @@ async def list_devices():
             )
     
     devices = speech_engine.list_devices()
-    return {"devices": devices}
+    return {
+        "devices": devices,
+        "current_device": speech_engine.device_index
+    }
 
 
 @app.post("/api/script")
@@ -256,6 +262,12 @@ class ConfigRequest(BaseModel):
     model_name: Optional[str] = None
 
 
+class SettingsRequest(BaseModel):
+    """Display settings update request."""
+    dim_spoken: Optional[bool] = None
+    # Add other syncable settings here later
+
+
 @app.post("/api/config")
 async def update_config(request: ConfigRequest):
     """Update configuration."""
@@ -306,6 +318,22 @@ async def update_config(request: ConfigRequest):
                     return JSONResponse(status_code=500, content={"error": "Failed to load new model"})
                     
     return {"success": True}
+
+
+@app.post("/api/settings")
+async def update_settings(request: SettingsRequest):
+    """Update display settings."""
+    global display_settings
+    
+    if request.dim_spoken is not None:
+        display_settings["dim_spoken"] = request.dim_spoken
+        
+    await broadcast({
+        "type": "settings",
+        "settings": display_settings
+    })
+    
+    return {"success": True, "settings": display_settings}
 
 
 @app.post("/api/start")
@@ -412,7 +440,8 @@ async def websocket_endpoint(websocket: WebSocket):
         "script": current_script,
         "word_count": word_matcher.get_word_count(),
         "position": word_matcher.current_position,
-        "context": word_matcher.get_context()
+        "context": word_matcher.get_context(),
+        "settings": display_settings
     })
     
     try:

@@ -344,6 +344,12 @@ body {
     /* Medium-dark grey for passed text */
 }
 
+/* Option to disable dimming */
+.no-dimming .word.spoken,
+.no-dimming .punct.spoken {
+    color: var(--text-primary);
+}
+
 .word.upcoming,
 .punct.upcoming {
     color: var(--text-primary);

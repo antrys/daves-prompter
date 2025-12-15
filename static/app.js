@@ -827,7 +827,6 @@ class SpeechPrompter {
                 this.autoHideControls = settings.autoHideControls || false;
                 this.isMirrored = settings.isMirrored || false;
 
-                this.applySettings();
             } catch (e) {
                 console.error('Error parsing settings:', e);
             }
